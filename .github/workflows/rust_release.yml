@@ -1,0 +1,77 @@
+name: Rust Release
+
+# This workflow runs when a new tag is pushed that starts with 'v'
+# (Make your code changes...)
+# git add .
+# git commit -m "My new feature"
+# git push origin main
+# git tag -a v0.1.0 -m "My first release"
+# git push origin v0.1.0
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    # Run on all 3 major operating systems
+    runs-on: ${{ matrix.os }}
+
+    # Define the build matrix for each OS
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: taskcli-linux-amd64
+            target: x86_64-unknown-linux-gnu
+
+          - os: windows-latest
+            asset_name: taskcli-windows-amd64.exe
+            target: x86_64-pc-windows-msvc
+
+          - os: macos-latest
+            asset_name: taskcli-macos-amd64
+            target: x86_64-apple-darwin
+
+    steps:
+      # 1. Get the code from your repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install the stable Rust toolchain
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # 3. Build the project in release mode
+      - name: Build project (release)
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # 4. Prepare the executable asset for upload
+      # We move it to a standard name for easier uploading.
+      # Note the different paths for each OS.
+      - name: Package executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          copy target\${{ matrix.target }}\release\taskcli.exe ${{ matrix.asset_name }}
+        shell: pwsh
+
+      - name: Package executable (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mv target/${{ matrix.target }}/release/taskcli ${{ matrix.asset_name }}
+
+      # 5. Create the GitHub Release and upload the asset
+      # This action uses the tag name as the release title
+      # and the tag's commit message as the release notes.
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          # This will create the release as a draft.
+          # You can manually review and publish it.
+          # Set to 'false' if you want it to publish automatically.
+          draft: true
+          files: ${{ matrix.asset_name }}
