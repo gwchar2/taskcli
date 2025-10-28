@@ -1,1 +1,7 @@
 /target
+*.rlib
+*.wasm
+*.so
+*.dylib
+*.a.vscode/
+.history/
