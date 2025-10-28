@@ -1,0 +1,59 @@
+name: Rust CI (Build & Test)
+
+# This workflow will run on pushes to the 'main' branch
+# and on any pull request that targets the 'main' branch.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_and_test:
+    name: Build & Test
+    # Use the latest version of Ubuntu to run the job
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code from your repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install the stable Rust toolchain
+      # It also installs 'clippy' (linter) and 'rustfmt' (formatter)
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      # 3. Set up a cache for dependencies
+      # This will make future builds much faster
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # 4. Check if the code is formatted correctly
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      # 5. Run the linter (Clippy)
+      # This fails the build if there are any warnings (-D warnings)
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+
+      # 6. Build the project
+      - name: Build project
+        run: cargo build
+
+      # 7. Run the tests
+      - name: Run tests
+        run: cargo test
